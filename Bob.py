@@ -5,6 +5,7 @@ import threading
 import pygame
 import ctypes
 import random
+import speech_recognition as sr
 
 
 class Bob(pygame.sprite.Sprite):
@@ -45,11 +46,12 @@ class Bob(pygame.sprite.Sprite):
         self.speaking = False
         bob_voice.stop()
     
-    def update(self):    
-        self.x += self.velocity
-        self.rect.x = self.x
-        if(self.x < 100 or self.x > 700):
-            self.velocity *= -1
+    def update(self):
+        if self.speaking == False:    
+            self.x += self.velocity
+            self.rect.x = self.x
+            if(self.x < 100 or self.x > 700):
+                self.velocity *= -1
     
 
     
@@ -86,7 +88,7 @@ bob_response = ""
 
 pet = Bob(700,500)
 current_image = pet.image[2]
-
+r = sr.Recognizer()
 running = True
 while running:
     FPS.tick(60)
@@ -100,10 +102,20 @@ while running:
         if event.type == pygame.KEYDOWN:
             
             if event.key == pygame.K_RETURN:
+                with sr.Microphone() as source:
+                    print("Diga alguma coisa...")
+                    r.adjust_for_ambient_noise(source)
+                    audio = r.listen(source)
+                try:
+                    user_input = r.recognize_google(audio, language="pt-BR")
+                    print("Você disse:", user_input)
+                except sr.UnknownValueError:
+                    user_input = "Não entendi o áudio"
+                except sr.RequestError as e:
+                    user_input = f"Erro no serviço Google: {e}"
                 bob_response = pet.BobBrain(user_input)
                 user_input = ""
                 pet.velocity = 0
-                current_image = pet.image[1]
                 if bob_response and not pet.speaking:
                     pet.speaking = True
                     threading.Thread(
@@ -111,13 +123,8 @@ while running:
                         args=(bob_response,),
                         daemon=True
                     ).start()
-            elif event.key == pygame.K_BACKSPACE and pet.speaking != True:
-                pet.velocity = 0
-                user_input = user_input[:-1]
-                current_image = pet.image[0]
             else:
                 pet.velocity = 0
-                user_input += event.unicode
                 current_image = pet.image[1]
         if event.type == pygame.KEYUP:
             while(True):
@@ -129,9 +136,6 @@ while running:
 
     displayArea.fill(transparent)
     displayArea.blit(current_image, pet.rect)
-
-    inputArea = font.render("$ "+user_input, True, (255,255,255))
-    displayArea.blit(inputArea, (10, 550))
     
     pet.update()
     if pet.velocity == 1 and pet.speaking != True:
