@@ -61,7 +61,7 @@ class Bob(pygame.sprite.Sprite):
 
     def BobBrain(self, question):
         response = ollama.chat(
-            model='phi3',
+            model='deepseek-r1:8b',
             messages=[
                 {
                     'role': 'system',
